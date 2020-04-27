@@ -32,6 +32,9 @@ for f in sorted(os.listdir(output)):
     with open(os.path.join(path)) as pf:
         with open(os.path.join(output, f + '_dmesg.txt')) as outf:
             with open(os.path.join(compare, f + '_compare.txt'), 'w') as cpf:
+                cpf.write('|'.join(['Name', 'Theorectical start time', 'Theorectical end time', 'Practical start time', 'Practical end time']) + '\n')
+                cpf.write('|'.join(['-', '-', '-', '-', '-']) + '\n')
+                
                 plines = pf.readlines()
                 Theo_unit = {}
                 for pl in plines:
@@ -61,7 +64,7 @@ for f in sorted(os.listdir(output)):
                     theo_end += '0' * (13 - len(theo_end))
                     THEO += '0' * (13 - len(THEO))
                     
-                    cpf.write(' '.join([Theo_unit[pid][0], theo_start, theo_end, THEO, prac_start, prac_end, PRAC]) + '\n')
+                    cpf.write('|'.join([Theo_unit[pid][0], theo_start, theo_end, THEO, prac_start, prac_end, PRAC]) + '\n')
     
     cnt += 1
 
