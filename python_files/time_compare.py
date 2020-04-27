@@ -32,7 +32,7 @@ for f in sorted(os.listdir(output)):
     with open(os.path.join(path)) as pf:
         with open(os.path.join(output, f + '_dmesg.txt')) as outf:
             with open(os.path.join(compare, f + '_compare.txt'), 'w') as cpf:
-                cpf.write('|'.join(['Name', 'Theorectical start', 'Theorectical end', 'Theorectical running', 'Practical start', 'Practical end', 'Practical running']) + '\n')
+                cpf.write('|'.join(['Name', 'Theo. start', 'Theo. end', 'Theo. running', 'Practical start', 'Practical end', 'Practical running']) + '\n')
                 cpf.write('|'.join(['-', '-', '-', '-', '-', '-', '-']) + '\n')
                 
                 plines = pf.readlines()
@@ -50,19 +50,19 @@ for f in sorted(os.listdir(output)):
                 for ol in olines:
                     ol = ol.split()
                     pid = ol[1]
-                    prac_start = str(round(float(ol[2]) - BASE, 9))
-                    prac_end = str(round(float(ol[3]) - BASE, 9))
-                    PRAC = str(round(float(prac_end) - float(prac_start), 9))
-                    prac_start += '0' * (13 - len(prac_start))
-                    prac_end += '0' * (13 - len(prac_end))
-                    PRAC += '0' * (13 - len(PRAC))
+                    prac_start = str(round(float(ol[2]) - BASE, 4))
+                    prac_end = str(round(float(ol[3]) - BASE, 4))
+                    PRAC = str(round(float(prac_end) - float(prac_start), 4))
+                    prac_start += '0' * (8 - len(prac_start))
+                    prac_end += '0' * (8 - len(prac_end))
+                    PRAC += '0' * (8 - len(PRAC))
 
-                    theo_start = str(round(Unit * float(Theo_unit[pid][1]), 9))
-                    theo_end = str(round(Unit * float(Theo_unit[pid][2]), 9))
-                    THEO = str(round(float(theo_end) - float(theo_start), 9))
-                    theo_start += '0' * (13 - len(theo_start))
-                    theo_end += '0' * (13 - len(theo_end))
-                    THEO += '0' * (13 - len(THEO))
+                    theo_start = str(round(Unit * float(Theo_unit[pid][1]), 4))
+                    theo_end = str(round(Unit * float(Theo_unit[pid][2]), 4))
+                    THEO = str(round(float(theo_end) - float(theo_start), 4))
+                    theo_start += '0' * (8 - len(theo_start))
+                    theo_end += '0' * (8 - len(theo_end))
+                    THEO += '0' * (8 - len(THEO))
                     
                     cpf.write('|'.join([Theo_unit[pid][0], theo_start, theo_end, THEO, prac_start, prac_end, PRAC]) + '\n')
     

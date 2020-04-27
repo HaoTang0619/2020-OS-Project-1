@@ -1,4 +1,4 @@
-Name|Theorectical start|Theorectical end|Theorectical running|Practical start|Practical end|Practical running
+Name|Theo. start|Theo. end|Theo. running|Practical start|Practical end|Practical running
 -|-|-|-|-|-|-
-P1|1.02971008300|13.9010861210|12.8713760380|0.00000000000|12.9611971380|12.9611971380
-P2|1.88780181900|16.4753613280|14.5875595090|0.82649540900|15.7218384740|14.8953430650
+P1|1.029700|13.90110|12.87140|0.000000|12.96120|12.96120
+P2|1.887800|16.47540|14.58760|0.826500|15.72180|14.89530
