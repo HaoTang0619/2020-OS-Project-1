@@ -18,6 +18,8 @@ typedef struct{
     int R, T;
     // For: take turns, burst counts, check RR, check 1st-time, check running:
     int turn, cnt, robin, first, running;
+    // For: record theorectical units (not necessary):
+    int other_cnt, start_cnt, end_cnt;
     pid_t pids;
 }Process;
 
@@ -35,7 +37,7 @@ static void sig_usr(int signo){
     // A child exit / pause.
     if(signo == SIGUSR1){
         /* DO NOT DECLARE VARIABLES IN A SWITCH STATEMENT */
-        int i; // Iterator
+        int i, p; // Iterator
         int min_T = 1e9, min_idx, remain; // SJF && PSJF
         switch(policy[0]){
             // FIFO & RR
@@ -44,6 +46,12 @@ static void sig_usr(int signo){
                 for(i = 0; i <= arrived + 1; i++){
                     if(proc[rounder].cnt < proc[rounder].T){
                         if(proc[rounder].robin == 0){
+                            // Get start_cnt
+                            if(proc[rounder].first == 1)
+                                for(p = 0; p <= arrived; p++)
+                                    if(proc[rounder].start_cnt < proc[p].end_cnt)
+                                        proc[rounder].start_cnt = proc[p].end_cnt;
+                            
                             while(proc[rounder].running == 0) 
                                 kill(proc[rounder].pids, SIGUSR2);
                             break;
@@ -65,9 +73,15 @@ static void sig_usr(int signo){
                         }
                     }
                 }
-                if(min_T != 1e9) 
+                if(min_T != 1e9){
+                    // Get start_cnt
+                    if(proc[min_idx].first == 1)
+                        for(p = 0; p <= arrived; p++)
+                            if(proc[min_idx].start_cnt < proc[p].end_cnt)
+                                proc[min_idx].start_cnt = proc[p].end_cnt;
                     while(proc[min_idx].running == 0)
                         kill(proc[min_idx].pids, SIGUSR2);
+                }
                 break;
         }
     }
@@ -78,6 +92,13 @@ static void sig_usr(int signo){
     return;
 }
 
+void PRINT_THEORECTICAL(){
+    FILE *fptr = fopen("Theo_unit.txt", "a");
+    fprintf(fptr, "%d %s %d %d\n", getpid(), proc[arrived].name, proc[arrived].start_cnt, proc[arrived].end_cnt);
+    fclose(fptr);
+    return;
+}
+    
 void PRINT_TO_DMESG(struct timespec start_time, struct timespec end_time){
     FILE *fptr = fopen("/dev/kmsg", "a");
     fprintf(fptr, "[Project1] %d %ld.%09ld %ld.%09ld\n", getpid(), start_time.tv_sec, start_time.tv_nsec, end_time.tv_sec, end_time.tv_nsec);
@@ -125,18 +146,21 @@ int main(){
         scanf("%s%d%d", proc[i].name, &proc[i].R, &proc[i].T);
         proc[i].turn = proc[i].cnt = proc[i].robin = proc[i].running = 0;
         proc[i].first = 1;
+        proc[i].other_cnt = proc[i].start_cnt = proc[i].end_cnt = 0;
     }
 
     qsort(proc, N, sizeof(Process), compare);
     int cnt = 0; // Time unit.
     
-    // Affinity (1) (for child) (line 172)
+    // Affinity (1) (for child) (line 202)
     CPU_ZERO(&mask);
     CPU_SET(1, &mask);
     
     for(int i = 0; i < N; i++){
         // Ready to run.
-        while(cnt++ < proc[i].R) Unit();
+        while(cnt < proc[i].R){
+            Unit(); cnt++;
+        }
         arrived++; // A process has arrived.
         
         int j; // Iterator
@@ -145,7 +169,10 @@ int main(){
             // FIFO & RR & SJF
             case 'F': case 'R': case 'S':
                 for(j = 0; j <= arrived; j++){
-                    if(j == arrived) proc[j].turn = 1;
+                    if(j == arrived){
+                        proc[j].turn = 1;
+                        proc[j].start_cnt = proc[j].R; // Get start_cnt.
+                    }
                     if(proc[j].turn == 1) break;
                 }
                 break;
@@ -153,7 +180,10 @@ int main(){
             // PSJF
             case 'P':
                 for(j = 0; j <= arrived; j++){
-                    if(j == arrived) proc[j].turn = 1;
+                    if(j == arrived){
+                        proc[j].turn = 1;
+                        proc[j].start_cnt = proc[j].R; // Get start_cnt.
+                    }
                     remain = proc[j].T - proc[j].cnt;
                     if(remain > 0 && remain <= proc[arrived].T) break;
                     if(proc[j].turn == 1) preempted = j;
@@ -184,28 +214,41 @@ int main(){
                 if(proc[arrived].first == 1){
                     proc[arrived].first = 0;
                     clock_gettime(CLOCK_REALTIME, &start_time); // Get start_time (1st executed).
+                    for(int p = 0; p <= N; p++) proc[arrived].other_cnt += proc[p].cnt;
                 }
 
                 switch(policy[0]){
                     // FIFO & SJF && PSJF
                     case 'F': case 'S': case 'P':
-                        while(proc[arrived].cnt++ < proc[arrived].T 
-                              && proc[arrived].turn == 1) Unit();
+                        while(proc[arrived].cnt < proc[arrived].T 
+                              && proc[arrived].turn == 1){
+                            Unit();
+                            proc[arrived].cnt++;
+                        }
                         break;
                     
                     // RR
                     case 'R':
-                        while(proc[arrived].cnt++ < proc[arrived].T
-                              && proc[arrived].cnt <= now + 500) Unit();
-                        if(proc[arrived].cnt > now + 500){
-                            proc[arrived].turn = 0;
-                            proc[arrived].robin = 1;
-                            proc[arrived].running = 0;
-                            kill(getppid(), SIGUSR1);
+                        while(proc[arrived].cnt < proc[arrived].T
+                              && proc[arrived].cnt < now + 500){
+                            Unit();
+                            proc[arrived].cnt++;
                         }
                         break;
                 }
 
+                // Update end_cnt.
+                int tmp = 0;
+                for(int p = 0; p <= N; p++) tmp += proc[p].cnt;
+                proc[arrived].end_cnt = proc[arrived].start_cnt + (tmp - proc[arrived].other_cnt);
+                
+                // RR
+                if(policy[0] == 'R' && proc[arrived].cnt >= now + 500 && proc[arrived].cnt < proc[arrived].T){
+                    proc[arrived].turn = 0;
+                    proc[arrived].robin = 1;
+                    proc[arrived].running = 0;
+                    kill(getppid(), SIGUSR1);
+                }
                 if(proc[arrived].cnt >= proc[arrived].T) break; // Burst finished.
             }
            
@@ -213,7 +256,8 @@ int main(){
             proc[arrived].turn = 0;
             fprintf(stdout, "%s %d\n", proc[arrived].name, proc[arrived].pids);
             fflush(stdout);
-            clock_gettime(CLOCK_REALTIME, &end_time); // Get end_time.
+            clock_gettime(CLOCK_REALTIME, &end_time); // Get end_time
+            PRINT_THEORECTICAL();
             PRINT_TO_DMESG(start_time, end_time);
             kill(getppid(), SIGUSR1); // Run another process.
             exit(0);    

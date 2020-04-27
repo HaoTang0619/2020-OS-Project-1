@@ -15,11 +15,14 @@
 make
 
 # Execute ("sudo" is for outputing to dmesg.)
-## Single case: (This will generate outputs to stdout and dmesg.)
+## Single case: (This will generate: (1) outputs to stdout and dmesg, (2) theorectical time units to a file, "./Theo_unit.txt".)
 sudo ./make < <INPUT FILE>
 
 ## All input files:
-sudo python3 run_all_input.py <INPUT FILE DIRECTORY>
+sudo python3 run_all_input.py <INPUT FILE DIRECTORY> <OUTPUT FILE DIRECTORY> <MAIN>
+
+## Compare theorectical & practical time:
+sudo python3 time_compare.py <THEO_UNIT FILE> <DMESG FILE DIRECTORY> <COMPARED FILE DIRECTORY>
 ```
 
 ## Remarks
