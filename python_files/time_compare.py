@@ -22,13 +22,15 @@ with open(ref) as rf:
 Unit = sum(Unit) / len(Unit) / 500
 
 cnt = 1
+max_diff = 0
+min_diff = 1e20
 for f in sorted(os.listdir(output)):
     if f[:16] == 'TIME_MEASUREMENT' or f[-10:] == 'stdout.txt':
         continue
     f = f.split('_dmesg')[0]
 
     print('Now running:','(%s/%d)'%(str(cnt).zfill(2), total), f)
-    
+
     with open(os.path.join(path)) as pf:
         with open(os.path.join(output, f + '_dmesg.txt')) as outf:
             with open(os.path.join(compare, f + '_compare.txt'), 'w') as cpf:
@@ -65,8 +67,14 @@ for f in sorted(os.listdir(output)):
                     theo_start += '0' * (8 - len(theo_start))
                     theo_end += '0' * (8 - len(theo_end))
                     THEO += '0' * (8 - len(THEO))
+
+                    max_diff = max(max_diff, abs(float(PRAC) - float(THEO)) / float(THEO) * 100)
+                    min_diff = min(min_diff, abs(float(PRAC) - float(THEO)) / float(THEO) * 100)
                     
                     cpf.write('|'.join([Theo_unit[pid][0], theo_start, theo_end, THEO, prac_start, prac_end, PRAC]) + '\n')
     
     cnt += 1
+
+print("Max_diff:", str(round(max_diff, 4)) + '%')
+print("Min_diff:", str(round(min_diff, 4)) + '%')
 
