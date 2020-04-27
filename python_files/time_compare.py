@@ -32,8 +32,8 @@ for f in sorted(os.listdir(output)):
     with open(os.path.join(path)) as pf:
         with open(os.path.join(output, f + '_dmesg.txt')) as outf:
             with open(os.path.join(compare, f + '_compare.txt'), 'w') as cpf:
-                cpf.write('|'.join(['Name', 'Theorectical start time', 'Theorectical end time', 'Practical start time', 'Practical end time']) + '\n')
-                cpf.write('|'.join(['-', '-', '-', '-', '-']) + '\n')
+                cpf.write('|'.join(['Name', 'Theorectical start', 'Theorectical end', 'Theorectical running', 'Practical start', 'Practical end', 'Practical running']) + '\n')
+                cpf.write('|'.join(['-', '-', '-', '-', '-', '-', '-']) + '\n')
                 
                 plines = pf.readlines()
                 Theo_unit = {}

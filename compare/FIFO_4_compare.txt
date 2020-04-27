@@ -1,5 +1,5 @@
-Name|Theorectical start time|Theorectical end time|Practical start time|Practical end time
--|-|-|-|-
+Name|Theorectical start|Theorectical end|Theorectical running|Practical start|Practical end|Practical running
+-|-|-|-|-|-|-
 P1|0.00000000000|3.43236694300|3.43236694300|0.00000000000|3.55132985100|3.55132985100
 P2|3.43236694300|4.29045867900|0.85809173600|3.55194497100|4.42608904800|0.87414407700
 P3|4.29045867900|4.63369537400|0.34323669500|4.42644572300|4.75759816200|0.33115243900
