@@ -44,8 +44,10 @@ for f in sorted(os.listdir(output)):
                 olines = outf.readlines()
                 # Set start_time as 0
                 BASE = 1e20 
+                BASE_T = 1e20
                 for ol in olines:
                     BASE = min(BASE, float(ol.split()[2]))
+                    BASE_T = min(BASE_T, round(Unit * float(Theo_unit[ol.split()[1]][1]), 4))
                 
                 for ol in olines:
                     ol = ol.split()
@@ -57,8 +59,8 @@ for f in sorted(os.listdir(output)):
                     prac_end += '0' * (8 - len(prac_end))
                     PRAC += '0' * (8 - len(PRAC))
 
-                    theo_start = str(round(Unit * float(Theo_unit[pid][1]), 4))
-                    theo_end = str(round(Unit * float(Theo_unit[pid][2]), 4))
+                    theo_start = str(round(Unit * float(Theo_unit[pid][1]) - BASE_T, 4))
+                    theo_end = str(round(Unit * float(Theo_unit[pid][2]) - BASE_T, 4))
                     THEO = str(round(float(theo_end) - float(theo_start), 4))
                     theo_start += '0' * (8 - len(theo_start))
                     theo_end += '0' * (8 - len(theo_end))
