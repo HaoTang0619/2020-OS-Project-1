@@ -18,7 +18,7 @@ typedef struct{
     int R, T;
     // For: take turns, burst counts, check RR, check 1st-time, check running:
     int turn, cnt, robin, first, running;
-    // For: record theorectical units (not necessary):
+    // For: record theoretical units (not necessary):
     int other_cnt, start_cnt, end_cnt;
     pid_t pids;
 }Process;
@@ -92,7 +92,7 @@ static void sig_usr(int signo){
     return;
 }
 
-void PRINT_THEORECTICAL(){
+void PRINT_THEORETICAL(){
     FILE *fptr = fopen("Theo_unit.txt", "a");
     fprintf(fptr, "%d %s %d %d\n", getpid(), proc[arrived].name, proc[arrived].start_cnt, proc[arrived].end_cnt);
     fclose(fptr);
@@ -257,7 +257,7 @@ int main(){
             fprintf(stdout, "%s %d\n", proc[arrived].name, proc[arrived].pids);
             fflush(stdout);
             clock_gettime(CLOCK_REALTIME, &end_time); // Get end_time
-            PRINT_THEORECTICAL();
+            PRINT_THEORETICAL();
             PRINT_TO_DMESG(start_time, end_time);
             kill(getppid(), SIGUSR1); // Run another process.
             exit(0);    

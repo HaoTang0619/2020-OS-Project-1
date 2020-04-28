@@ -12,7 +12,7 @@ total = int(sp.getoutput('ls ' + output + ' | wc -l')) // 2 - 1
 if not os.path.exists(compare):
     os.makedirs(compare)
 
-# Theorectical unit
+# Theoretical unit
 ref = os.path.join(output, 'TIME_MEASUREMENT_dmesg.txt')
 Unit = []
 with open(ref) as rf:
