@@ -1,4 +1,6 @@
 #include<unistd.h>
+#include<sys/syscall.h>
+#include"include/common.h"
 #include<sys/types.h>
 #include<sys/wait.h>
 #include<stdio.h>
@@ -13,11 +15,13 @@
 #define SIGUSR3 SIGXFSZ
 #include<signal.h>
 
+#define MAX_PROC 10
+
 typedef struct{
     char name[64]; 
     int R, T;
-    // For: take turns, burst counts, check RR, check 1st-time, check running:
-    int turn, cnt, robin, first, running;
+    // For: take turns, burst counts, check 1st-time, check running:
+    int turn, cnt, first, running;
     // For: record theoretical units (not necessary):
     int other_cnt, start_cnt, end_cnt;
     pid_t pids;
@@ -25,7 +29,8 @@ typedef struct{
 
 Process *proc; // Information of each child.
 char policy[10]; 
-int N, arrived = -1, rounder;
+int N, arrived = -1;
+int RR_Queue[MAX_PROC]; // RR
 
 void Unit(){
     volatile unsigned long i;
@@ -39,28 +44,58 @@ static void sig_usr(int signo){
         /* DO NOT DECLARE VARIABLES IN A SWITCH STATEMENT */
         int i, p; // Iterator
         int min_T = 1e9, min_idx, remain; // SJF && PSJF
+	int RR_now, RR_new, RR_idx = -1, RR_newQueue[10]; // RR
         switch(policy[0]){
-            // FIFO & RR
-            case 'F': case 'R':
-                // Round each process.
-                for(i = 0; i <= arrived + 1; i++){
-                    if(proc[rounder].cnt < proc[rounder].T){
-                        if(proc[rounder].robin == 0){
-                            // Get start_cnt
-                            if(proc[rounder].first == 1)
-                                for(p = 0; p <= arrived; p++)
-                                    if(proc[rounder].start_cnt < proc[p].end_cnt)
-                                        proc[rounder].start_cnt = proc[p].end_cnt;
-                            
-                            while(proc[rounder].running == 0) 
-                                kill(proc[rounder].pids, SIGUSR2);
-                            break;
-                        }
-                        else proc[rounder].robin = 0;
+            // FIFO
+            case 'F': 
+                for(i = 0; i <= arrived; i++){
+                    if(proc[i].cnt < proc[i].T){
+		        // Get start_cnt
+		        for(p = 0; p <= arrived; p++)
+			    if(proc[i].start_cnt < proc[p].end_cnt)
+			        proc[i].start_cnt = proc[p].end_cnt;
+		    
+		        while(proc[i].running == 0) 
+			    kill(proc[i].pids, SIGUSR2);
+		        break;
                     }
-                    rounder = (rounder + 1) % (arrived + 1);
                 }
                 break;
+	    
+	    // RR
+	    case 'R':
+	        RR_now = RR_Queue[0];
+                // Round each process.
+                for(i = 1; i <= arrived; i++){
+                    if(proc[RR_Queue[i]].cnt < proc[RR_Queue[i]].T){
+		        RR_idx = i;
+		        RR_new = RR_Queue[i];
+		        break;
+		    }
+                }
+	        if(RR_idx != -1){
+		    // Update queue
+		    for(i = 0; i <= arrived; i++){
+		        RR_newQueue[i] = RR_Queue[RR_idx];
+			RR_idx = (RR_idx + 1) % (arrived + 1);
+		    }
+		    for(i = 0; i <= arrived; i++)
+		        RR_Queue[i] = RR_newQueue[i];
+
+		    // Get start_cnt
+		    if(proc[RR_new].first == 1){
+		        for(p = 0; p <= arrived; p++)
+		            if(proc[RR_new].start_cnt < proc[p].end_cnt)
+			        proc[RR_new].start_cnt = proc[p].end_cnt;
+		    }
+	    
+		    while(proc[RR_new].running == 0) 
+		        kill(proc[RR_new].pids, SIGUSR2);
+	        }else if(proc[RR_now].cnt < proc[RR_now].T){
+		    while(proc[RR_now].running == 0) 
+		        kill(proc[RR_now].pids, SIGUSR2);
+		}
+	        break;
             
             // SJF & PSJF
             case 'S': case 'P':
@@ -99,13 +134,6 @@ void PRINT_THEORETICAL(){
     return;
 }
     
-void PRINT_TO_DMESG(struct timespec start_time, struct timespec end_time){
-    FILE *fptr = fopen("/dev/kmsg", "a");
-    fprintf(fptr, "[Project1] %d %ld.%09ld %ld.%09ld\n", getpid(), start_time.tv_sec, start_time.tv_nsec, end_time.tv_sec, end_time.tv_nsec);
-    fclose(fptr);
-    return;
-}
-
 int compare(const void *a, const void *b){
     Process *A = (Process*)a;
     Process *B = (Process*)b;
@@ -144,7 +172,7 @@ int main(){
     // Input
     for(int i = 0; i < N; i++){
         scanf("%s%d%d", proc[i].name, &proc[i].R, &proc[i].T);
-        proc[i].turn = proc[i].cnt = proc[i].robin = proc[i].running = 0;
+        proc[i].turn = proc[i].cnt = proc[i].running = 0;
         proc[i].first = 1;
         proc[i].other_cnt = proc[i].start_cnt = proc[i].end_cnt = 0;
     }
@@ -152,7 +180,7 @@ int main(){
     qsort(proc, N, sizeof(Process), compare);
     int cnt = 0; // Time unit.
     
-    // Affinity (1) (for child) (line 202)
+    // Affinity (1) (for child) (line 232)
     CPU_ZERO(&mask);
     CPU_SET(1, &mask);
     
@@ -162,6 +190,7 @@ int main(){
             Unit(); cnt++;
         }
         arrived++; // A process has arrived.
+	RR_Queue[arrived] = i;
         
         int j; // Iterator
         int remain, preempted = -1; // PSJF
@@ -201,7 +230,7 @@ int main(){
         if(tmp == 0){
             sched_setaffinity(0, sizeof(mask), &mask); // Affinity
             
-            struct timespec start_time, end_time;
+            long start_time, end_time;
             // Running
             while(1){
                 // A paused process would not be context switched.
@@ -213,7 +242,7 @@ int main(){
 
                 if(proc[arrived].first == 1){
                     proc[arrived].first = 0;
-                    clock_gettime(CLOCK_REALTIME, &start_time); // Get start_time (1st executed).
+                    start_time = syscall(451); // Get start_time (1st executed).
                     for(int p = 0; p <= N; p++) proc[arrived].other_cnt += proc[p].cnt;
                 }
 
@@ -245,7 +274,6 @@ int main(){
                 // RR
                 if(policy[0] == 'R' && proc[arrived].cnt >= now + 500 && proc[arrived].cnt < proc[arrived].T){
                     proc[arrived].turn = 0;
-                    proc[arrived].robin = 1;
                     proc[arrived].running = 0;
                     kill(getppid(), SIGUSR1);
                 }
@@ -256,10 +284,10 @@ int main(){
             proc[arrived].turn = 0;
             fprintf(stdout, "%s %d\n", proc[arrived].name, proc[arrived].pids);
             fflush(stdout);
-            clock_gettime(CLOCK_REALTIME, &end_time); // Get end_time
-            PRINT_THEORETICAL();
-            PRINT_TO_DMESG(start_time, end_time);
-            kill(getppid(), SIGUSR1); // Run another process.
+            end_time = syscall(451);
+	    PRINT_THEORETICAL();
+            syscall(452, pid, start_time, end_time);
+	    kill(getppid(), SIGUSR1); // Run another process.
             exit(0);    
         }else proc[arrived].pids = tmp;
     }

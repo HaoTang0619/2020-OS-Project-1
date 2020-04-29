@@ -12,6 +12,8 @@
 ## Folders
 - compare: Theoretical time units vs. Practical time units
 - demo: Demo video
+- kernel_files: All the files I modified when compiling linux 5.4 kernel. (with 2 new system calls)
+- (Reference: https://fenghe.us/compile-5-4-2-linux-kernel-with-a-new-syscall-for-ubuntu-18-04-in-vmware/)
 - OS_PJ1_Test: Input files
 - output: Output files
 - python_files: For running all input files and comparing time units.
@@ -36,13 +38,12 @@ ex: sudo python3 time_compare.py Theo_unit.txt ../output ../compare
 
 ## Results
 ```powershell
-Time per unit: 0.00146 s
+Time per unit: 0.00146s
 Difference between theoretical & practical time:
-- Max: 3.21697%
-- Min: 0.00959%
-- Avg: 0.49646%
+- Max: 7.56016%
+- Min: 0.0047%
+- Avg: 1.3636%
 ```
 
 ## Remarks
 - Start time: 紀錄子行程被第一次丟上cpu執行時的時間。
-- No need to compile the kernel.
